@@ -1,0 +1,57 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  verified  Boolean  @default(false) // Can this user verify replays?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  replays   Replay[]
+}
+
+model Replay {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Metadata fields for searching
+  format    String   // .gdr, .echo, etc.
+  fps       Float
+  name      String
+  author    String
+  verified  Boolean  @default(false)
+  levelId   Int
+  
+  // Linked to User who uploaded it
+  uploadedBy User    @relation(fields: [uploaderId], references: [id])
+  uploaderId Int
+  
+  authorId   Int     // Geometry Dash Author ID
+  
+  // The actual replay file data
+  // storing in DB for simplicity, but for production with millions, 
+  // consider external object storage (S3) and storing the URL here.
+  data      Bytes    
+  hash      String?
+
+  @@index([format])
+  @@index([fps])
+  @@index([name])
+  @@index([author])
+  @@index([verified])
+  @@index([levelId])
+  @@index([uploaderId])
+  @@index([authorId])
+  @@index([hash])
+}

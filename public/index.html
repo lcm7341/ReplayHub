@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReplayHub</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 0;
+        padding: 2rem;
+        background: #0a0a0f;
+        color: #f8f8f8;
+      }
+      h1 {
+        margin-bottom: 0.5rem;
+      }
+      form {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        background: #14142b;
+        border-radius: 0.75rem;
+      }
+      label {
+        display: block;
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
+      }
+      input,
+      select,
+      button,
+      textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #333;
+        background: #0b0b13;
+        color: #fff;
+        font-size: 1rem;
+      }
+      button {
+        cursor: pointer;
+        background: #6366f1;
+        border: none;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 2rem;
+      }
+      th,
+      td {
+        padding: 0.5rem;
+        border-bottom: 1px solid #222;
+        text-align: left;
+      }
+      .status {
+        color: #82f25d;
+      }
+      .error {
+        color: #ff6b6b;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ReplayHub Client</h1>
+    <p>Search or upload Geometry Dash replays directly from this page.</p>
+
+    <form id="search-form">
+      <h2>Search Replays</h2>
+      <label>Format</label>
+      <input type="text" name="format" placeholder=".gdr, .echo, etc." />
+      <label>FPS</label>
+      <input type="number" step="0.01" name="fps" placeholder="60" />
+      <label>Replay Name</label>
+      <input type="text" name="name" placeholder="Bloodbath" />
+      <label>Author</label>
+      <input type="text" name="author" />
+      <label>Level ID</label>
+      <input type="number" name="levelId" />
+      <label>Author ID</label>
+      <input type="number" name="authorId" />
+      <label>Verified</label>
+      <select name="verified">
+        <option value="">Any</option>
+        <option value="true">Verified</option>
+        <option value="false">Unverified</option>
+      </select>
+      <label>Page</label>
+      <input type="number" name="page" value="1" />
+      <button type="submit">Search</button>
+      <div id="search-status" class="status"></div>
+    </form>
+
+    <table id="results-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Author</th>
+          <th>Format</th>
+          <th>FPS</th>
+          <th>Level ID</th>
+          <th>Verified</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <form id="upload-form">
+      <h2>Upload Replay</h2>
+      <label>File</label>
+      <input type="file" id="replay-file" required />
+      <label>Format</label>
+      <input type="text" name="format" placeholder="Auto-detected" readonly style="background: #1a1a23; color: #888;" />
+      <label>FPS</label>
+      <input type="number" step="0.01" name="fps" value="60" required />
+      <label>Name</label>
+      <input type="text" name="name" required />
+      <label>Author</label>
+      <input type="text" name="author" required />
+      <label>Level ID</label>
+      <input type="number" name="levelId" required />
+      <label>Author ID</label>
+      <input type="number" name="authorId" required />
+      <label>Username (for verification)</label>
+      <input type="text" name="username" required />
+      <label>
+        <input type="checkbox" name="verified" />
+        Verified
+      </label>
+      <button type="submit">Upload Replay</button>
+      <div id="upload-status" class="status"></div>
+      <div id="upload-error" class="error"></div>
+    </form>
+
+    <script>
+      const searchForm = document.getElementById('search-form');
+      const resultsTable = document.querySelector('#results-table tbody');
+      const searchStatus = document.getElementById('search-status');
+      const uploadForm = document.getElementById('upload-form');
+      const uploadStatus = document.getElementById('upload-status');
+      const uploadError = document.getElementById('upload-error');
+
+      const fileInput = document.getElementById('replay-file');
+      
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files?.[0];
+        if (file) {
+          const extension = '.' + file.name.split('.').pop();
+          uploadForm.format.value = extension;
+        }
+      });
+
+      searchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(searchForm);
+        const params = new URLSearchParams();
+        for (const [key, value] of formData.entries()) {
+          if (value) {
+            params.append(key, value);
+          }
+        }
+        searchStatus.textContent = 'Searching…';
+        const res = await fetch(`/replays?${params.toString()}`);
+        const payload = await res.json();
+        resultsTable.innerHTML = '';
+        if (payload.data?.length) {
+          payload.data.forEach((replay) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td>${replay.id}</td>
+              <td>${replay.name}</td>
+              <td>${replay.author}</td>
+              <td>${replay.format}</td>
+              <td>${replay.fps}</td>
+              <td>${replay.levelId}</td>
+              <td>${replay.verified ? 'Yes' : 'No'}</td>
+            `;
+            resultsTable.appendChild(row);
+          });
+        } else {
+          const row = document.createElement('tr');
+          row.innerHTML = '<td colspan="7">No results</td>';
+          resultsTable.appendChild(row);
+        }
+        searchStatus.textContent = `Showing ${payload.data.length} of ${payload.meta?.total || 0}`;
+      });
+
+      uploadForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fileInput = document.getElementById('replay-file');
+        const file = fileInput.files?.[0];
+        if (!file) return;
+        
+        // Auto-detect format from file extension
+        const extension = '.' + file.name.split('.').pop();
+        
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64 = reader.result.split(',')[1];
+          const data = {
+            format: extension,
+            fps: parseFloat(uploadForm.fps.value),
+            name: uploadForm.name.value,
+            author: uploadForm.author.value,
+            levelId: Number(uploadForm.levelId.value),
+            authorId: Number(uploadForm.authorId.value),
+            username: uploadForm.username.value,
+            verified: uploadForm.verified.checked,
+            data: base64
+          };
+          uploadStatus.textContent = 'Uploading…';
+          uploadError.textContent = '';
+          const response = await fetch('/replays', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          if (response.ok) {
+            uploadStatus.textContent = 'Replay uploaded successfully.';
+            uploadForm.reset();
+            fileInput.value = '';
+          } else {
+            uploadStatus.textContent = '';
+            const err = await response.json();
+            uploadError.textContent = err?.error || 'Upload failed';
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    </script>
+  </body>
+</html>
+
