@@ -105,6 +105,7 @@
           <th>FPS</th>
           <th>Level ID</th>
           <th>Verified</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody></tbody>
@@ -179,6 +180,7 @@
               <td>${replay.fps}</td>
               <td>${replay.levelId}</td>
               <td>${replay.verified ? 'Yes' : 'No'}</td>
+              <td><a href="/replays/${replay.id}/download" target="_blank">Download</a></td>
             `;
             resultsTable.appendChild(row);
           });

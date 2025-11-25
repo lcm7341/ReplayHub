@@ -104,6 +104,36 @@ export default async function replayRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // Download Replay File
+  fastify.get<{ Params: { id: string } }>('/replays/:id/download', async (request, reply) => {
+    const id = parseInt(request.params.id);
+    if (isNaN(id)) {
+      return reply.status(400).send({ error: 'Invalid replay ID' });
+    }
+
+    try {
+      const replay = await prisma.replay.findUnique({
+        where: { id },
+        select: { data: true, name: true, format: true }
+      });
+
+      if (!replay) {
+        return reply.status(404).send({ error: 'Replay not found' });
+      }
+
+      const filename = `${replay.name.replace(/[^a-z0-9]/gi, '_')}${replay.format}`;
+      
+      // Set headers to force download
+      reply.header('Content-Type', 'application/octet-stream');
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      return reply.send(replay.data);
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ error: 'Internal Server Error' });
+    }
+  });
+
   // Create Replay
   fastify.post<{ Body: ReplayCreateBody }>('/replays', {
     schema: {

@@ -77,12 +77,14 @@ Upload a new replay.
 }
 ```
 
+Note: The API expects the `data` field to be a Base64-encoded string of the file content. The API will decode this and store the raw bytes in the database. When downloading, the raw bytes are served directly.
+
 ## Frontend
 
 A tiny single-page client is served at `/` (from `public/index.html`). It lets you:
 
 - search with all supported filters (format, FPS, name, author, verified, level/author IDs).
-- upload .gdr/.echo/.mhr files by choosing the file, filling the metadata, and submitting it.
+- upload .gdr/.echo/.mhr files (the client handles Base64 encoding before sending).
 
 The backend also protects against duplicate uploads: when a file is posted, Prisma first queries existing records that share the same name and compares a SHA-256 hash of the bytes. If no match is found, it repeats the hash comparison across entries for the same `levelId`. Any hash collision returns a 409 so you never store the same replay twice even if the metadata toggles slightly.
 
